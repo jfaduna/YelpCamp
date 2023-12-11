@@ -44,24 +44,40 @@ router.get('/:id', catchAsync(async (req, res) => {
 }))
 
 router.get('/:id/edit', isLoggedIn, catchAsync(async (req, res) => {
-    const id = req.params.id
-    const campground = await Campground.findById(id)
+    const { id } = req.params
+    const campground = await Campground.findById(id);
     if (!campground) {
         req.flash('error', 'Campground does not exist')
         return res.redirect('/campgrounds')
+    }
+    if (!campground.author.equals(req.user._id)) {
+        req.flash('error', 'You do not have permission to do that!')
+        return res.redirect(`/campgrounds/${id}`);
     }
     res.render('campgrounds/edit', { campground })
 }))
 
 router.put('/:id', isLoggedIn, validateCampground, catchAsync(async (req, res) => {
     const { id } = req.params;
-    const campground = await Campground.findByIdAndUpdate(id, { ...req.body.campground })
+    const campground = await Campground.findById(id);
+    if (!campground.author.equals(req.user._id)) {
+        req.flash('error', 'You do not have permission to do that!')
+        return res.redirect(`/campgrounds/${id}`);
+    }
+
+    await Campground.findByIdAndUpdate(id, { ...req.body.campground })
     req.flash('success', 'Successfully updated campground!')
     res.redirect(`/campgrounds/${campground._id}`)
 }))
 
 router.delete('/:id', isLoggedIn, catchAsync(async (req, res) => {
     const { id } = req.params;
+    const campground = await Campground.findById(id);
+    if (!campground.author.equals(req.user._id)) {
+        req.flash('error', 'You do not have permission to do that!')
+        return res.redirect(`/campgrounds/${id}`);
+    }
+
     await Campground.findByIdAndDelete(id)
     req.flash('success', 'Successfully deleted campground!')
     res.redirect('/campgrounds')
